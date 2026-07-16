@@ -1,5 +1,5 @@
 /* ============================================================
-   WPA Play — app.js
+   PWA Play — app.js
    Music player logic: file picker, playlist, playback controls
    ============================================================ */
 

@@ -1,17 +1,17 @@
 /* ============================================================
-   WPA Play — Service Worker
+   PWA Play — Service Worker
    Cache-first for static assets, network-first for navigation
    ============================================================ */
 
-const CACHE_NAME = 'wpa-play-v1';
+const CACHE_NAME = 'pwa-play-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/styles.css',
   '/app.js',
   '/manifest.json',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg'
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
 ];
 
 /* ---------- Install: pre-cache static assets ---------- */
