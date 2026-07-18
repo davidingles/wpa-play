@@ -502,6 +502,33 @@ body {
   text-overflow: ellipsis;
 }
 
+/* Song delete button (X) */
+.song-delete-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--surface-600);
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.song-item:hover .song-delete-btn,
+.song-item:active .song-delete-btn {
+  opacity: 1;
+}
+
+.song-delete-btn:hover {
+  color: #f87171;
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
 /* More button (3 dots) */
 .btn-more {
   width: 32px;

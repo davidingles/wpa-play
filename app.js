@@ -79,6 +79,70 @@
   }
 
   /* ----------------------------------------------------------
+     INDEXEDDB — Persistent storage for songs
+  ---------------------------------------------------------- */
+  const DB_NAME = 'pwa-play-db';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'songs';
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+      };
+      request.onsuccess = (e) => resolve(e.target.result);
+      request.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function idbSaveSong(song) {
+    try {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(song);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e.target.error);
+      });
+    } catch (err) {
+      console.warn('IDB save failed:', err);
+    }
+  }
+
+  async function idbGetAllSongs() {
+    try {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const request = tx.objectStore(STORE_NAME).getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (e) => reject(e.target.error);
+      });
+    } catch (err) {
+      console.warn('IDB read failed:', err);
+      return [];
+    }
+  }
+
+  async function idbDeleteSong(id) {
+    try {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e.target.error);
+      });
+    } catch (err) {
+      console.warn('IDB delete failed:', err);
+    }
+  }
+
+  /* ----------------------------------------------------------
      FILE INPUT HANDLING
   ---------------------------------------------------------- */
   function openFilePicker() {
@@ -93,18 +157,33 @@
     fileInput.value = '';
   });
 
-  function addSongs(files) {
+  async function addSongs(files) {
     const audioFiles = files.filter(f => f.type.startsWith('audio/'));
 
-    audioFiles.forEach(file => {
+    for (const file of audioFiles) {
       const url = URL.createObjectURL(file);
+      const id = 'song_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
       songs.push({
+        id: id,
         file: file,
         name: cleanFileName(file.name),
         url: url,
         duration: null
       });
-    });
+
+      // Persist to IndexedDB
+      try {
+        const buffer = await file.arrayBuffer();
+        await idbSaveSong({
+          id: id,
+          name: file.name,
+          type: file.type,
+          data: buffer
+        });
+      } catch (err) {
+        console.warn('Could not save song to IDB:', file.name, err);
+      }
+    }
 
     // Probe durations
     songs.forEach((song, i) => {
@@ -113,7 +192,6 @@
       tmp.addEventListener('loadedmetadata', () => {
         songs[i].duration = tmp.duration;
         renderSongList();
-        // Update now-playing if this is the active song
         if (currentIndex === i) {
           timeTotal.textContent = formatTime(tmp.duration);
         }
@@ -159,6 +237,11 @@
             <p class="song-name${active ? ' song-name-bold' : ''}">${song.name}</p>
             <p class="song-meta">${song.duration ? formatTime(song.duration) : '...'}</p>
           </div>
+          <button class="song-delete-btn btn-press" data-delete-index="${i}" title="Eliminar">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16">
+              <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
           ${playing ? `
             <div class="equalizer">
               <div class="eq-bar"></div>
@@ -172,10 +255,21 @@
 
     // Attach click listeners
     songList.querySelectorAll('.song-item').forEach(el => {
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (e) => {
+        // Don't load song if delete button was clicked
+        if (e.target.closest('.song-delete-btn')) return;
         const idx = parseInt(el.dataset.index, 10);
         loadSong(idx);
         play();
+      });
+    });
+
+    // Attach delete listeners
+    songList.querySelectorAll('.song-delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.deleteIndex, 10);
+        removeSong(idx);
       });
     });
   }
@@ -295,6 +389,85 @@
   });
 
   /* ----------------------------------------------------------
+     RESTORE SONGS FROM IndexedDB
+  ---------------------------------------------------------- */
+  async function restoreSongs() {
+    const stored = await idbGetAllSongs();
+    if (!stored || stored.length === 0) return;
+
+    stored.forEach(song => {
+      const blob = new Blob([song.data], { type: song.type });
+      const ext = song.name.split('.').pop() || 'mp3';
+      const file = new File([blob], song.name, { type: song.type });
+      const url = URL.createObjectURL(file);
+      songs.push({
+        id: song.id,
+        file: file,
+        name: cleanFileName(song.name),
+        url: url,
+        duration: null
+      });
+    });
+
+    // Probe durations
+    songs.forEach((song, i) => {
+      if (song.duration !== null) return;
+      const tmp = new Audio();
+      tmp.addEventListener('loadedmetadata', () => {
+        songs[i].duration = tmp.duration;
+        renderSongList();
+        if (currentIndex === i) {
+          timeTotal.textContent = formatTime(tmp.duration);
+        }
+      });
+      tmp.src = song.url;
+    });
+
+    renderSongList();
+  }
+
+  /* ----------------------------------------------------------
+     REMOVE SONG (from array + IndexedDB)
+  ---------------------------------------------------------- */
+  async function removeSong(index) {
+    if (index < 0 || index >= songs.length) return;
+
+    const song = songs[index];
+
+    // Revoke blob URL to free memory
+    if (song.url) URL.revokeObjectURL(song.url);
+
+    // Remove from array
+    songs.splice(index, 1);
+
+    // Adjust currentIndex
+    if (songs.length === 0) {
+      currentIndex = -1;
+      isPlaying = false;
+      audio.src = '';
+      npTitle.textContent = 'Selecciona una canción';
+      npArtist.textContent = '—';
+      miniArt.classList.remove('playing');
+      pulseIndicator.style.display = 'none';
+      updatePlayPauseIcons();
+    } else if (index === currentIndex) {
+      // Was playing, pick a neighbor
+      const nextIdx = index >= songs.length ? songs.length - 1 : index;
+      loadSong(nextIdx);
+      play();
+    } else if (index < currentIndex) {
+      currentIndex--;
+    }
+
+    // Delete from IndexedDB
+    if (song.id) {
+      await idbDeleteSong(song.id);
+    }
+
+    renderSongList();
+  }
+
+  /* ----------------------------------------------------------
      EVENT LISTENERS
   ---------------------------------------------------------- */
   addSongsBtn.addEventListener('click', openFilePicker);
@@ -303,6 +476,11 @@
   miniPlayBtn.addEventListener('click', togglePlayPause);
   btnNext.addEventListener('click', playNext);
   btnPrev.addEventListener('click', playPrev);
+
+  /* ----------------------------------------------------------
+     INIT — Restore songs from IndexedDB on startup
+  ---------------------------------------------------------- */
+  restoreSongs();
 
   /* ----------------------------------------------------------
      SERVICE WORKER REGISTRATION
