@@ -3,10 +3,20 @@
   "short_name": "PWA Play",
   "description": "Reproductor de música PWA offline",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
-  "orientation": "portrait",
+  "prefer_related_applications": false,
+  "categories": ["music", "entertainment"],
+  "shortcuts": [
+    {
+      "name": "Reproducir",
+      "url": "/",
+      "description": "Abrir reproductor"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",

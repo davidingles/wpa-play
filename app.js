@@ -7,11 +7,12 @@
   'use strict';
 
   /* ----------------------------------------------------------
-     STATE
-  ---------------------------------------------------------- */
+      STATE
+   ---------------------------------------------------------- */
   let songs = [];          // { file, name, url, duration }
   let currentIndex = -1;
   let isPlaying = false;
+  let deferredPrompt = null;
 
   /* ----------------------------------------------------------
      DOM REFERENCES
@@ -41,6 +42,9 @@
   const btnNext       = document.getElementById('btn-next');
   const iconPlay      = document.getElementById('icon-play');
   const iconPause     = document.getElementById('icon-pause');
+
+  // Install PWA
+  const installBtn    = document.getElementById('install-btn');
 
   /* ----------------------------------------------------------
      COLOR PALETTE for song thumbnails
@@ -468,8 +472,8 @@
   }
 
   /* ----------------------------------------------------------
-     EVENT LISTENERS
-  ---------------------------------------------------------- */
+      EVENT LISTENERS
+   ---------------------------------------------------------- */
   addSongsBtn.addEventListener('click', openFilePicker);
   emptyAddBtn.addEventListener('click', openFilePicker);
   btnPlayPause.addEventListener('click', togglePlayPause);
@@ -478,8 +482,28 @@
   btnPrev.addEventListener('click', playPrev);
 
   /* ----------------------------------------------------------
-     INIT — Restore songs from IndexedDB on startup
-  ---------------------------------------------------------- */
+      INSTALL PWA
+   ---------------------------------------------------------- */
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'inline-flex';
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('PWA instalada correctamente');
+    }
+    deferredPrompt = null;
+    installBtn.style.display = 'none';
+  });
+
+  /* ----------------------------------------------------------
+      INIT — Restore songs from IndexedDB on startup
+   ---------------------------------------------------------- */
   restoreSongs();
 
   /* ----------------------------------------------------------

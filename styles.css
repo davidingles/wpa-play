@@ -173,6 +173,34 @@ body {
   height: 20px;
 }
 
+/* ---------- Install Button ---------- */
+.install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--text-white);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.3);
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.install-btn:active {
+  transform: scale(0.95);
+  opacity: 0.85;
+}
+
+.install-btn svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-white);
+}
+
 /* ---------- Now Playing Mini Section ---------- */
 .now-playing-section {
   padding: 20px 20px 8px;
