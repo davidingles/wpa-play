@@ -484,10 +484,31 @@
   /* ----------------------------------------------------------
       INSTALL PWA
    ---------------------------------------------------------- */
+  const installBtnText = document.getElementById('install-btn-text');
+
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true;
+  }
+
+  function updateInstallButton() {
+    if (isStandalone()) {
+      installBtnText.textContent = 'Instalado';
+      installBtn.disabled = true;
+      installBtn.style.opacity = '0.6';
+      installBtn.style.boxShadow = 'none';
+    } else {
+      installBtnText.textContent = 'Instalar';
+      installBtn.disabled = false;
+      installBtn.style.opacity = '';
+      installBtn.style.boxShadow = '';
+    }
+  }
+
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installBtn.style.display = 'inline-flex';
+    updateInstallButton();
   });
 
   installBtn.addEventListener('click', async () => {
@@ -498,8 +519,10 @@
       console.log('PWA instalada correctamente');
     }
     deferredPrompt = null;
-    installBtn.style.display = 'none';
+    updateInstallButton();
   });
+
+  updateInstallButton();
 
   /* ----------------------------------------------------------
       INIT — Restore songs from IndexedDB on startup

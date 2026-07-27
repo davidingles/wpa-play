@@ -195,6 +195,12 @@ body {
   opacity: 0.85;
 }
 
+.install-btn:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+  cursor: default;
+}
+
 .install-btn svg {
   width: 16px;
   height: 16px;
