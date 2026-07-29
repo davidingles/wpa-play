@@ -1,9 +1,10 @@
 {
   "name": "wpa-play",
   "version": "1.0.0",
-  "description": "",
+  "description": "PWA Play - Reproductor de música progresivo (PWA)",
   "main": "app.js",
   "scripts": {
+    "start": "npx serve .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
